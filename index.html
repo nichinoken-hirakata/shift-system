@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>シフト希望入力 - 枚方駅前校</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <style>
+        :root { --primary-color: #3b82f6; --bg-color: #f0f2f5; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg-color); padding: 15px; margin: 0; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        h1 { font-size: 1.3rem; text-align: center; color: #1e293b; margin-top: 0; }
+        .notice { background: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; color: #be123c; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #475569; font-size: 0.85rem; }
+        select, input, textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
+        textarea { resize: vertical; }
+        button { width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .history-section { margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 20px; }
+        .history-item { background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #3b82f6; }
+        .del-hist { color: #ef4444; font-weight: bold; cursor: pointer; padding: 5px; }
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .auth-card { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 350px; }
+    </style>
+</head>
+<body>
+
+<div id="auth-overlay">
+    <div class="auth-card">
+        <h2 id="auth-title" style="margin-top:0; font-size:1.1rem;">講師ログイン</h2>
+        <div class="input-group">
+            <label>自分の名前を選択</label>
+            <select id="auth-name-select"></select>
+        </div>
+        <div class="input-group">
+            <label id="pw-label">パスワードを入力</label>
+            <input type="password" id="auth-pw" placeholder="パスワードを入力">
+            <p id="reg-msg" style="font-size:0.75rem; color:#be123c; margin-top:5px; display:none; font-weight:bold;">【初回登録】今後使用するパスワードを自由に決めて入力してください。</p>
+        </div>
+        <button id="auth-btn">ログインして開始</button>
+    </div>
+</div>
+
+<div class="card">
+    <h1>シフト希望入力</h1>
+    <div id="notice-board" class="notice"></div>
+    <div style="text-align: right; font-size: 0.8rem; margin-bottom: 15px;">
+        ログイン中：<b id="login-user-name">---</b>さん
+        <a href="#" onclick="location.reload()" style="color:#3b82f6; margin-left:10px;">(ログアウト)</a>
+    </div>
+
+    <div class="input-group">
+        <label>職種</label>
+        <select id="role-select">
+            <option value="チューター">チューター</option>
+            <option value="事務">事務</option>
+            <option value="テスト監督">テスト監督</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>可能日（複数選択可）</label>
+        <input type="text" id="date-picker" placeholder="カレンダーをタップして選択">
+    </div>
+
+    <div style="display:flex; gap:10px;" class="input-group">
+        <div style="flex:1; min-width: 0;"><label>開始</label><input type="time" id="start-time" value="16:30"></div>
+        <div style="flex:1; min-width: 0;"><label>終了</label><input type="time" id="end-time" value="21:15"></div>
+    </div>
+    
+    <div class="input-group">
+        <label>連絡事項（任意）</label>
+        <textarea id="note-input" rows="2" placeholder="遅刻・早退や特記事項があれば入力"></textarea>
+    </div>
+
+    <button id="submit-btn">この内容で希望を送信</button>
+
+    <div class="history-section">
+        <h2 style="font-size: 1rem; margin-bottom: 10px;">あなたの送信済み希望</h2>
+        <div id="history-list">履歴を確認するにはログインしてください。</div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://vekslcqvttjhjepvaslp.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZla3NsY3F2dHRqaGplcHZhc2xwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDUyMjMsImV4cCI6MjA5MTc4MTIyM30.IX0dEp68SVr90AJKK9yzrNKv1GOIwSKllBahmE0zj0M';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let staffList = [];
+    let customDefaults = {}; // 管理者が設定した特殊な時間のデータ
+
+    const fp = flatpickr("#date-picker", { 
+        mode: "multiple", 
+        dateFormat: "Y-m-d", 
+        locale: "ja", 
+        minDate: "today", 
+        static: true,
+        onChange: function(selectedDates, dateStr, instance) {
+            // 日付が選ばれた時、最後に追加された日付をチェック
+            if (selectedDates.length > 0) {
+                const lastSelected = selectedDates[selectedDates.length - 1];
+                const fDate = flatpickr.formatDate(lastSelected, "Y-m-d");
+                
+                // その日付に特殊な時間設定があれば、入力欄を自動書き換え
+                if (customDefaults[fDate]) {
+                    document.getElementById('start-time').value = customDefaults[fDate].start_time;
+                    document.getElementById('end-time').value = customDefaults[fDate].end_time;
+                }
+            }
+        }
+    });
+
+    async function init() {
+        // スタッフ取得
+        const { data: sData } = await _supabase.from('staff_list').select('*').order('name');
+        staffList = sData || [];
+        const select = document.getElementById('auth-name-select');
+        select.innerHTML = '<option value="">選択してください</option>';
+        staffList.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = s.name;
+            select.appendChild(opt);
+        });
+
+        // お知らせ取得
+        const { data: nData } = await _supabase.from('notice').select('*').order('id', { ascending: false }).limit(1);
+        document.getElementById('notice-board').innerText = nData[0]?.content || "お知らせはありません";
+
+        // 管理者が設定したデフォルト時間を取得しておく
+        const { data: defaultData } = await _supabase.from('default_times').select('*');
+        defaultData?.forEach(d => {
+            customDefaults[d.date] = d;
+        });
+    }
+
+    document.getElementById('auth-name-select').onchange = function() {
+        const user = staffList.find(s => s.name === this.value);
+        if (user && !user.password) {
+            document.getElementById('reg-msg').style.display = 'block';
+            document.getElementById('pw-label').innerText = "新規パスワードを設定";
+        } else {
+            document.getElementById('reg-msg').style.display = 'none';
+            document.getElementById('pw-label').innerText = "パスワードを入力";
+        }
+    };
+
+    document.getElementById('auth-btn').onclick = async function() {
+        const name = document.getElementById('auth-name-select').value;
+        const pw = document.getElementById('auth-pw').value;
+        if (!name || !pw) return alert("名前とパスワードを入力してください");
+
+        const { data: checkData } = await _supabase.from('staff_list').select('*').eq('name', name);
+        const user = checkData[0];
+
+        if (!user.password) {
+            await _supabase.from('staff_list').update({ password: pw }).eq('name', name);
+            alert("パスワードを登録しました！");
+        } else if (user.password !== pw) {
+            return alert("パスワードが違います。");
+        }
+        
+        currentUser = user;
+        document.getElementById('login-user-name').innerText = name;
+        document.getElementById('auth-overlay').style.display = 'none';
+        
+        if (!user.is_tutor) {
+            const roleSelect = document.getElementById('role-select');
+            roleSelect.options[0].disabled = true;
+            roleSelect.value = "事務";
+        }
+        loadMyHistory();
+    };
+
+    async function loadMyHistory() {
+        const today = new Date().toLocaleDateString('sv-SE'); // 今日の日付 (YYYY-MM-DD)
+        const { data } = await _supabase.from('shifts')
+            .select('*')
+            .eq('staff_name', currentUser.name)
+            .gte('work_date', today) // work_date が今日以上(gte)のものだけ
+            .order('work_date', { ascending: true });
+                const list = document.getElementById('history-list');
+        list.innerHTML = data.length ? "" : "履歴はありません";
+        data.forEach(h => {
+            let statusText = h.is_confirmed ? "確定済" : "未確定";
+            if (h.is_cancelled) statusText = "取消";
+            
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `<div><b>${h.work_date}</b> [${statusText}]<br>${h.shift_time} (${h.role})</div><span class="del-hist" onclick="deleteRequest(${h.id})">削除</span>`;
+            list.appendChild(div);
+        });
+    }
+
+    window.deleteRequest = async function(id) {
+        if (confirm("【重要】希望を削除する場合は、必ず管理者へ一報を入れてください。\n\nこのまま削除してもよろしいですか？")) {
+            await _supabase.from('shifts').delete().eq('id', id);
+            alert("削除しました。忘れずに管理者へ連絡してください。");
+            loadMyHistory();
+        }
+    };
+
+    document.getElementById('submit-btn').onclick = async function() {
+        const dates = fp.selectedDates;
+        const start = document.getElementById('start-time').value;
+        const end = document.getElementById('end-time').value;
+        const role = document.getElementById('role-select').value;
+        const noteMsg = document.getElementById('note-input').value; // 連絡事項を取得
+
+        if (!dates.length) return alert("日付を選択してください");
+
+        const insertData = dates.map(d => ({
+            staff_name: currentUser.name,
+            role: role,
+            work_date: d.toLocaleDateString('sv-SE'),
+            shift_time: `${start}〜${end}`,
+            note: noteMsg
+        }));
+
+        await _supabase.from('shifts').insert(insertData);
+        alert("送信完了しました！");
+        fp.clear();
+        document.getElementById('note-input').value = ""; // メモ欄クリア
+        loadMyHistory();
+    };
+
+    init();
+</script>
+</body>
+</html>

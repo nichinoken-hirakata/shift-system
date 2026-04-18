@@ -1,0 +1,121 @@
+/* 基本設定：指で操作しやすいサイズにする */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f0f2f5;
+    margin: 0;
+    padding: 10px; /* iPhoneの端に少しだけ隙間を作る */
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box; /* はみ出し防止の重要設定 */
+}
+
+/* 全ての要素でサイズ計算を「内側」に含める設定（はみ出し防止の魔法） */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+.container {
+    background: white;
+    width: 100%; /* 画面幅いっぱいに広がるようにする */
+    max-width: 400px; /* ただし最大でも400px（PCで見ても変じゃないように） */
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+h1 {
+    font-size: 1.2rem;
+    color: #333;
+    text-align: center;
+    margin-top: 0;
+}
+
+.user-name {
+    text-align: center;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: bold;
+}
+
+/* 日付と時間の入力欄を整える */
+.date-select, .time-group {
+    margin-bottom: 20px;
+}
+
+/* 日付と時間の入力欄の親要素 */
+.time-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* 入力ボックスの基本設定 */
+.time-input, 
+input[type="time"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+    padding: 10px 5px;
+    font-size: 16px; /* ズーム防止 */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    
+    /* ★ここが重要：iPhone標準のピッカー（ふわっとするやつ）を復活させる */
+    -webkit-appearance: listbox !important; 
+    display: flex;
+    align-items: center;
+}
+
+/* もし上記でダメな場合は、こちらを試してください */
+@supports (-webkit-touch-callout: none) {
+    /* iOS専用の調整 */
+    input[type="time"] {
+        /* appearanceを強制的にデフォルト（またはそれに近いもの）に戻す */
+        -webkit-appearance: borderless-attachment-pill !important; 
+        min-height: 44px; /* タップしやすい高さ */
+    }
+}
+
+.time-input {
+    flex: 1; /* 左右均等の幅にする */
+}
+
+/* クルクル回る入力欄のスタイル */
+input[type="date"],
+input[type="time"] {
+    width: 100%;
+    padding: 12px 8px; /* 左右のパディングを少し削って狭い画面に対応 */
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    -webkit-appearance: none; /* iPhone特有のデフォルトスタイルをリセット */
+}
+
+button {
+    width: 100%;
+    padding: 16px;
+    margin-top: 10px;
+    background-color: #007aff;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; /* タップ時の青い枠線を消す */
+}
+
+button:active {
+    background-color: #0056b3;
+    transform: scale(0.98); /* 押した時に少し沈む演出 */
+}
