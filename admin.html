@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者パネル - 枚方駅前校</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .section { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { font-size: 1rem; border-left: 4px solid #3b82f6; padding-left: 10px; margin-bottom: 15px; margin-top: 0; }
+        .btn { padding: 10px 20px; background-color: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-confirm { background-color: #f59e0b; padding: 12px 24px; }
+        .staff-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        .tag { background: #f1f5f9; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px; min-width: 180px; font-size: 0.9rem; }
+        #calendar { background: white; border-radius: 8px; padding: 10px; border: 1px solid #e2e8f0; }
+        .fc-event-title { cursor: pointer; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 320px; }
+        input[type="text"], input[type="time"], select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        label { font-size: 0.8rem; color: #64748b; font-weight: bold; }
+        /* 凡例（追加分） */
+        .legend { display: flex; gap: 15px; margin-bottom: 15px; font-size: 0.85rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header><h1>管理者パネル</h1></header>
+
+    <div style="display:flex; gap:20px; flex-wrap: wrap; margin-bottom: 20px;">
+        
+        <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 20px;">
+            
+            <div class="section" style="margin-bottom:0;">
+                <h2>管理者による代行入力</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div>
+                        <label>スタッフ</label>
+                        <select id="proxy-staff"><option value="">スタッフを選択</option></select>
+                    </div>
+                    <div>
+                        <label>日付</label>
+                        <input type="text" id="proxy-date" placeholder="日付を選択">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <label>職種</label>
+                        <select id="proxy-role">
+                            <option value="チューター">チューター</option>
+                            <option value="事務">事務</option>
+                            <option value="テスト監督">テスト監督</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>開始</label>
+                        <input type="time" id="proxy-start" value="16:30">
+                    </div>
+                    <div>
+                        <label>終了</label>
+                        <input type="time" id="proxy-end" value="21:15">
+                    </div>
+                </div>
+                <button id="proxy-submit-btn" class="btn" style="width:100%; background-color:#3b82f6;">シフトを登録</button>
+            </div>
+
+            <div class="section" style="margin-bottom:0;">
+                <h2>デフォルトシフト時間の設定</h2>
+                <label>日付を選択（複数可）</label>
+                <input type="text" id="default-date-picker" placeholder="日付を選択" style="margin-bottom:10px; margin-top:5px;">
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin-bottom: 10px;">
+                    <input type="time" id="def-start" value="16:30">
+                    <span style="text-align:center;">〜</span>
+                    <input type="time" id="def-end" value="21:15">
+                </div>
+                <button id="save-default-btn" class="btn" style="width:100%; background-color:#10b981;">時間を一括設定</button>
+            </div>
+
+        </div>
+
+        <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 20px;">
+            
+            <div class="section" style="margin-bottom:0;">
+                <h2>新規アルバイトの登録</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="new-staff-name" placeholder="氏名を入力">
+                    <button id="add-staff-btn" class="btn">追加</button>
+                </div>
+                <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 10px;">
+                    ※名前左のチェック：入っていると「チューター資格あり」として扱われます。
+                </p>
+                <div class="legend" style="background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0;">
+                <div class="legend-item"><input type="checkbox" checked disabled style="margin:0;"> チューター資格あり</div>
+                <div class="legend-item"><span>🔄</span> パスワード初期化</div>
+                <div class="legend-item"><span style="color:#ef4444; font-weight:bold;">×</span> 削除</div>
+            </div>
+                <div id="staff-tags" class="staff-grid">読み込み中...</div>
+            </div>
+
+            <div class="section" style="margin-bottom:0;">
+                <h2>全体お知らせ更新</h2>
+                <label>当月の基本シフトなどを入力してください（講師画面に表示）</label>
+                <textarea id="notice-input" rows="5" style="margin-top:5px; margin-bottom:10px; font-family:inherit;" placeholder="例：【3月の基本シフト】&#13;&#10;月・火 16:30〜21:15&#13;&#10;水 17:00〜21:00"></textarea>
+                <button id="update-notice-btn" class="btn" style="width:100%;">お知らせを保存</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="section" style="background: #fff7ed;">
+        <button id="batch-confirm-btn" class="btn btn-confirm" style="width:100%;">未確定の希望を一括確定する（閲覧ページへ公開）</button>
+    </div>
+
+    <div class="section">
+        <h2>シフトカレンダー（✉️：メッセージあり）</h2>
+        <div class="legend">
+            <div class="legend-item"><span class="dot" style="background-color: #ef4444;"></span>チューター</div>
+            <div class="legend-item"><span class="dot" style="background-color: #f59e0b;"></span>テスト監督</div>
+            <div class="legend-item"><span class="dot" style="background-color: #10b981;"></span>事務</div>
+            <div class="legend-item"><span class="dot" style="background-color: #94a3b8;"></span>欠勤(キャンセル)</div>
+        </div>
+        <div id="calendar"></div>
+    </div>
+
+    <div class="section" style="background: #f0f9ff;">
+        <h2>LINE / LINE WORKS 通知設定（引継ぎ用）</h2>
+        <p style="font-size: 0.8rem; color: #64748b;">Webhook URLをここに貼り付けて保存できます。</p>
+        <input type="text" id="webhook-url" placeholder="https://..." style="margin-bottom: 10px;">
+        <button id="save-settings-btn" class="btn" style="background-color: #0ea5e9;">設定を保存</button>
+    </div>
+</div>
+
+<div id="edit-modal" class="modal">
+    <div class="modal-content">
+        <h3 id="edit-title" style="margin-top:0;"></h3>
+        <div id="edit-note-box" style="display:none; background:#fef3c7; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
+            <strong style="color:#d97706;">📝 メッセージ:</strong><br>
+            <span id="edit-note-text"></span>
+        </div>
+        <label>職種:</label>
+        <select id="edit-role" style="margin-top:5px;">
+            <option value="チューター">チューター</option>
+            <option value="事務">事務</option>
+            <option value="テスト監督">テスト監督</option>
+        </select>
+        <label style="margin-top:10px; display:block;">勤務時間:</label>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:5px; margin-bottom:15px;">
+            <input type="time" id="edit-start"><span>〜</span><input type="time" id="edit-end">
+        </div>
+        <label style="color:#ef4444;"><input type="checkbox" id="edit-cancel"> キャンセル(欠勤)</label>
+        <div style="display:flex; justify-content:space-between; margin-top:20px;">
+            <button id="edit-delete-btn" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">削除</button>
+            <div>
+                <button onclick="closeModal()" class="btn" style="background:#94a3b8; margin-right:5px;">閉じる</button>
+                <button id="edit-save-btn" class="btn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 管理者用パスワードの設定
+    const ADMIN_PASSWORD = "hirakata-admin"; 
+
+    // ページ読み込み時にパスワードを確認
+    const inputPass = prompt("管理者パスワードを入力してください");
+
+    if (inputPass !== ADMIN_PASSWORD) {
+        alert("パスワードが違います。アクセスできません。");
+        document.body.innerHTML = "<h1>認証エラー：アクセス権限がありません。</h1>";
+        window.location.href = "index.html"; 
+    }
+
+    const SUPABASE_URL = 'https://vekslcqvttjhjepvaslp.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZla3NsY3F2dHRqaGplcHZhc2xwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDUyMjMsImV4cCI6MjA5MTc4MTIyM30.IX0dEp68SVr90AJKK9yzrNKv1GOIwSKllBahmE0zj0M';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const ROLE_COLORS = { 'チューター': '#ef4444', 'テスト監督': '#f59e0b', '事務': '#10b981' };
+    
+    let calendar;
+    let editingShift = null;
+
+    const adminFp = flatpickr("#default-date-picker", { mode: "multiple", dateFormat: "Y-m-d", locale: "ja" });
+    const proxyFp = flatpickr("#proxy-date", { dateFormat: "Y-m-d", locale: "ja" });
+
+    window.onload = async function() {
+        calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+            initialView: 'dayGridMonth', locale: 'ja',
+            eventClick: (info) => openModal(info.event.extendedProps.raw)
+        });
+        calendar.render();
+        fetchAll();
+        loadSettings();
+
+        // 補足：最新のお知らせを自動取得して表示
+        const { data: noticeData } = await _supabase.from('notice').select('content').order('created_at', { ascending: false }).limit(1);
+        if (noticeData && noticeData[0]) {
+            document.getElementById('notice-input').value = noticeData[0].content;
+        }
+    };
+
+    // スタッフ一覧とカレンダーの更新
+    async function fetchAll() {
+        const { data: sData } = await _supabase.from('staff_list').select('*').order('name');
+        
+        // スタッフ管理タグの更新
+        const tagContainer = document.getElementById('staff-tags');
+        tagContainer.innerHTML = "";
+        
+        // 代行入力のセレクトボックスの初期化
+        const proxyStaffSelect = document.getElementById('proxy-staff');
+        proxyStaffSelect.innerHTML = '<option value="">スタッフを選択</option>';
+
+        sData?.forEach(s => {
+            // タグ一覧
+            const div = document.createElement('div');
+            div.className = 'tag';
+            div.innerHTML = `
+                <input type="checkbox" ${s.is_tutor ? "checked" : ""} onchange="toggleTutor('${s.name}', ${s.is_tutor})">
+                <span style="flex-grow:1;">${s.name}さん</span>
+                <span style="color:#3b82f6; cursor:pointer; margin-right:10px;" title="パスワード初期化" onclick="resetPassword('${s.name}')">🔄</span>
+                <span style="color:#ef4444; cursor:pointer; font-weight:bold;" onclick="deleteStaff('${s.name}')">×</span>
+            `;
+            tagContainer.appendChild(div);
+
+            // 代行入力用の選択肢
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.innerText = s.name;
+            proxyStaffSelect.appendChild(opt);
+        });
+
+        // シフトデータの取得とカレンダー反映
+        const { data: shData } = await _supabase.from('shifts').select('*');
+        calendar.removeAllEvents();
+        shData?.forEach(sh => {
+            let color = sh.is_cancelled ? '#94a3b8' : (ROLE_COLORS[sh.role] || '#3b82f6');
+            let icon = (sh.note && sh.note.trim() !== "") ? "✉️ " : "";
+            let mod = sh.is_modified ? "【変更】" : "";
+            let conf = sh.is_confirmed ? "" : "【未】";
+
+            calendar.addEvent({
+                title: `${icon}${mod}${conf}${sh.staff_name}さん(${sh.shift_time})`,
+                start: sh.work_date,
+                backgroundColor: color, borderColor: color,
+                extendedProps: { raw: sh }
+            });
+        });
+    }
+
+    // 代行入力の送信処理
+    document.getElementById('proxy-submit-btn').onclick = async () => {
+        const staff = document.getElementById('proxy-staff').value;
+        const date = document.getElementById('proxy-date').value;
+        const role = document.getElementById('proxy-role').value;
+        const start = document.getElementById('proxy-start').value;
+        const end = document.getElementById('proxy-end').value;
+
+        if (!staff || !date || !start || !end) {
+            alert("全ての項目を入力、または選択してください。");
+            return;
+        }
+
+        const { error } = await _supabase.from('shifts').insert({
+            staff_name: staff,
+            work_date: date,
+            role: role,
+            shift_time: `${start}〜${end}`,
+            is_confirmed: true, // 管理者入力のため確定扱い
+            is_modified: false,
+            is_cancelled: false
+        });
+
+        if (error) {
+            alert("登録に失敗しました: " + error.message);
+        } else {
+            alert(`${staff}さんのシフトを登録しました。`);
+            document.getElementById('proxy-date').value = ''; // 日付をリセット
+            fetchAll();
+        }
+    };
+
+    // パスワードリセット
+    window.resetPassword = async (name) => {
+        if (confirm(`${name} 先生のパスワードをリセット（空に）しますか？`)) {
+            await _supabase.from('staff_list').update({ password: null }).eq('name', name);
+            alert("リセットしました。次回ログイン時に再設定可能です。");
+            fetchAll();
+        }
+    };
+
+    function openModal(sh) {
+        editingShift = sh;
+        document.getElementById('edit-title').innerText = sh.staff_name + "さん";
+        const noteBox = document.getElementById('edit-note-box');
+        if (sh.note) {
+            document.getElementById('edit-note-text').innerText = sh.note;
+            noteBox.style.display = "block";
+        } else { noteBox.style.display = "none"; }
+        document.getElementById('edit-role').value = sh.role;
+        document.getElementById('edit-cancel').checked = sh.is_cancelled;
+        const times = sh.shift_time.split('〜');
+        document.getElementById('edit-start').value = times[0];
+        document.getElementById('edit-end').value = times[1];
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
+
+    document.getElementById('edit-save-btn').onclick = async () => {
+        const isMod = editingShift.is_confirmed ? true : editingShift.is_modified;
+        await _supabase.from('shifts').update({
+            role: document.getElementById('edit-role').value,
+            shift_time: `${document.getElementById('edit-start').value}〜${document.getElementById('edit-end').value}`,
+            is_cancelled: document.getElementById('edit-cancel').checked,
+            is_modified: isMod
+        }).eq('id', editingShift.id);
+        closeModal(); fetchAll();
+    };
+
+    document.getElementById('edit-delete-btn').onclick = async () => {
+        if (confirm("削除しますか？")) { await _supabase.from('shifts').delete().eq('id', editingShift.id); closeModal(); fetchAll(); }
+    };
+
+    document.getElementById('batch-confirm-btn').onclick = async () => {
+        if (!confirm("未確定の希望をすべて一括で確定しますか？")) return;
+        await _supabase.from('shifts').update({ is_confirmed: true }).neq('is_confirmed', true);
+        alert("確定しました！"); fetchAll();
+    };
+
+    async function loadSettings() {
+        const { data } = await _supabase.from('settings').select('*').eq('key', 'line_webhook_url');
+        if (data && data[0]) document.getElementById('webhook-url').value = data[0].value;
+    }
+
+    document.getElementById('save-settings-btn').onclick = async () => {
+        const url = document.getElementById('webhook-url').value;
+        await _supabase.from('settings').upsert({ key: 'line_webhook_url', value: url });
+        alert("設定を保存しました。");
+    };
+
+    window.toggleTutor = async (name, cur) => { await _supabase.from('staff_list').update({ is_tutor: !cur }).eq('name', name); fetchAll(); };
+    window.deleteStaff = async (name) => { if (confirm(`${name}さんを削除しますか？`)) { await _supabase.from('staff_list').delete().eq('name', name); fetchAll(); } };
+    
+    document.getElementById('save-default-btn').onclick = async () => {
+        const dates = adminFp.selectedDates.map(d => ({ 
+            date: flatpickr.formatDate(d, "Y-m-d"), 
+            start_time: document.getElementById('def-start').value, 
+            end_time: document.getElementById('def-end').value 
+        }));
+        await _supabase.from('default_times').upsert(dates); 
+        alert("設定完了"); 
+        adminFp.clear();
+    };
+
+    document.getElementById('add-staff-btn').onclick = async () => {
+        const name = document.getElementById('new-staff-name').value;
+        if (name) { 
+            await _supabase.from('staff_list').insert({ name: name, is_tutor: true }); 
+            document.getElementById('new-staff-name').value = "";
+            fetchAll(); 
+        }
+    };
+
+    document.getElementById('update-notice-btn').onclick = async () => {
+        const content = document.getElementById('notice-input').value;
+        await _supabase.from('notice').insert({ content: content });
+        alert("保存しました");
+    };
+</script>
+</body>
+</html>
