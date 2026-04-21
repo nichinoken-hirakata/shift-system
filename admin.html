@@ -119,7 +119,9 @@
 
             <div class="section" style="margin-bottom:0;">
                 <h2>全体お知らせ更新</h2>
-                <label>当月の基本シフトなどを入力してください（講師画面に表示）</label>
+                <label style="color:#0ea5e9;">📢 現在、講師画面に表示中のお知らせ</label>
+                <div id="current-notice" style="margin-top:5px; margin-bottom:12px; padding:10px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; font-size:0.9rem; color:#0c4a6e; white-space:pre-wrap; min-height:2.4em;">読み込み中...</div>
+                <label>新しく表示するお知らせを入力（保存すると上の内容と入れ替わります）</label>
                 <textarea id="notice-input" rows="5" style="margin-top:5px; margin-bottom:10px; font-family:inherit;" placeholder="例：【3月の基本シフト】&#13;&#10;月・火 16:30〜21:15&#13;&#10;水 17:00〜21:00"></textarea>
                 <button id="update-notice-btn" class="btn" style="width:100%;">お知らせを保存</button>
             </div>
@@ -245,12 +247,22 @@
         loadSettings();
         loadHolidayConfig();
 
-        // 補足：最新のお知らせを自動取得して表示
-        const { data: noticeData } = await _supabase.from('notice').select('content').order('created_at', { ascending: false }).limit(1);
-        if (noticeData && noticeData[0]) {
-            document.getElementById('notice-input').value = noticeData[0].content;
-        }
+        loadCurrentNotice();
     };
+
+    // 最新のお知らせを取得して、現在公開中の枠＋編集用テキストエリアの両方にセット
+    async function loadCurrentNotice() {
+        const { data: noticeData } = await _supabase.from('notice').select('content').order('id', { ascending: false }).limit(1);
+        const box = document.getElementById('current-notice');
+        if (noticeData && noticeData[0] && noticeData[0].content) {
+            box.innerText = noticeData[0].content;
+            box.style.color = "#0c4a6e";
+            document.getElementById('notice-input').value = noticeData[0].content;
+        } else {
+            box.innerText = "（お知らせはまだ登録されていません）";
+            box.style.color = "#64748b";
+        }
+    }
 
     // スタッフ一覧とカレンダーの更新
     async function fetchAll() {
@@ -422,6 +434,7 @@
         const content = document.getElementById('notice-input').value;
         await _supabase.from('notice').insert({ content: content });
         alert("保存しました");
+        loadCurrentNotice();
     };
 </script>
 </body>
