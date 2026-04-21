@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#6366f1">
     <title>シフト希望入力 - 枚方駅前校</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
@@ -10,52 +11,315 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <style>
-        :root { --primary-color: #3b82f6; --bg-color: #f0f2f5; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg-color); padding: 15px; margin: 0; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        h1 { font-size: 1.3rem; text-align: center; color: #1e293b; margin-top: 0; }
-        .notice { background: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; color: #be123c; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #475569; font-size: 0.85rem; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #eef2ff;
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --bg-gradient: linear-gradient(180deg, #e0e7ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+            --text: #0f172a;
+            --text-sub: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --border-focus: #a5b4fc;
+            --surface: #ffffff;
+            --surface-alt: #f8fafc;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --radius: 14px;
+            --radius-lg: 20px;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0; padding: 0; min-height: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text);
+            padding: max(15px, env(safe-area-inset-top)) 15px max(20px, env(safe-area-inset-bottom));
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1.5;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 24px 20px;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 20px 40px -16px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(15, 23, 42, 0.04);
+            max-width: 460px;
+            margin: 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-align: center;
+            margin: 0 0 18px;
+            letter-spacing: 0.02em;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        /* お知らせ */
+        .notice {
+            background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+            border: 1px solid #fcd34d;
+            padding: 12px 14px 12px 40px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.88rem;
+            color: #78350f;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            position: relative;
+        }
+        .notice::before {
+            content: "📢";
+            position: absolute;
+            left: 12px; top: 11px;
+            font-size: 1.1rem;
+        }
+
+        /* ユーザーバー */
+        .user-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+            color: var(--text-sub);
+            margin-bottom: 18px;
+            padding: 10px 12px;
+            background: var(--primary-light);
+            border-radius: 10px;
+        }
+        .user-bar .user-name { font-weight: 700; color: var(--primary-dark); }
+        .user-bar a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.78rem;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: var(--surface);
+        }
+        .user-bar a:active { background: var(--border); }
+
+        /* フォーム */
+        .input-group { margin-bottom: 16px; }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 700;
+            color: var(--text-sub);
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            text-transform: none;
+        }
+
         select, input, textarea {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
+            padding: 13px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
             font-size: 16px;
-            box-sizing: border-box;
-            background-color: #fff;
-            color: #1e293b;
+            background: var(--surface);
+            color: var(--text);
             font-family: inherit;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
         }
-        input[type="time"] {
-            min-height: 48px;
-            line-height: 1.2;
-            text-align: center;
-            display: block;
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
         }
-        /* iOSのtime入力に残る内側余白や背景を確実に打ち消す */
+
+        /* セレクトのシェブロン矢印 */
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23475569'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 011.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 20px;
+            padding-right: 40px;
+        }
+
+        input[type="time"] {
+            min-height: 50px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 17px;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
         input[type="time"]::-webkit-date-and-time-value {
             text-align: center;
             min-height: 1.2em;
         }
-        textarea { resize: vertical; }
-        button { width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .history-section { margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 20px; }
-        .history-item { background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #3b82f6; }
-        .del-hist { color: #ef4444; font-weight: bold; cursor: pointer; padding: 5px; }
-        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .auth-card { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 350px; }
+
+        textarea { resize: vertical; min-height: 60px; }
+
+        /* プライマリボタン */
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.5);
+            transition: transform 0.08s ease, box-shadow 0.15s ease, filter 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            letter-spacing: 0.04em;
+            font-family: inherit;
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 4px 10px -3px rgba(99, 102, 241, 0.45);
+            filter: brightness(0.97);
+        }
+
+        /* 履歴セクション */
+        .history-section {
+            margin-top: 28px;
+            padding-top: 22px;
+            border-top: 1px dashed var(--border);
+        }
+        .history-section h2 {
+            font-size: 1rem;
+            margin: 0 0 12px;
+            color: var(--text);
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .history-section h2::before { content: "🗓"; font-size: 1.1rem; }
+
+        .history-item {
+            background: var(--surface-alt);
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid var(--primary);
+            line-height: 1.55;
+        }
+        .history-item b {
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .history-empty {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-left: 6px;
+            vertical-align: 2px;
+        }
+        .status-confirmed { background: var(--success-bg); color: #065f46; }
+        .status-pending { background: var(--warning-bg); color: #92400e; }
+        .status-cancelled { background: #e5e7eb; color: #374151; }
+
+        .del-hist {
+            color: var(--danger);
+            font-weight: 700;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            background: transparent;
+            transition: background-color 0.15s ease;
+            white-space: nowrap;
+        }
+        .del-hist:active { background: var(--danger-bg); }
+
+        /* 認証オーバーレイ */
+        #auth-overlay {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, rgba(79,70,229,0.92) 0%, rgba(124,58,237,0.92) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+        }
+        .auth-card {
+            background: var(--surface);
+            padding: 28px 24px;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 30px 60px -20px rgba(0,0,0,0.4);
+        }
+        .auth-card h2 {
+            margin: 0 0 6px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            text-align: center;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+        .auth-subtitle {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 0 0 18px;
+        }
+
+        /* flatpickr微調整（カレンダーの角丸とフォント） */
+        .flatpickr-calendar {
+            border-radius: 14px !important;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12) !important;
+            font-family: inherit !important;
+        }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
     <div class="auth-card">
-        <h2 style="margin-top:0; font-size:1.1rem;">講師ログイン</h2>
+        <h2>講師ログイン</h2>
+        <p class="auth-subtitle">枚方駅前校 シフト希望システム</p>
         <div class="input-group">
             <label>自分の名前を選択</label>
             <select id="auth-name-select"></select>
@@ -63,18 +327,18 @@
         <div class="input-group">
             <label id="pw-label">パスワードを入力</label>
             <input type="password" id="auth-pw" placeholder="パスワードを入力">
-            <p id="reg-msg" style="font-size:0.75rem; color:#be123c; margin-top:5px; display:none; font-weight:bold;">【初回登録】今後使用するパスワードを自由に決めて入力してください。</p>
+            <p id="reg-msg" style="font-size:0.75rem; color:#be123c; margin-top:6px; display:none; font-weight:bold;">【初回登録】今後使用するパスワードを自由に決めて入力してください。</p>
         </div>
-        <button id="auth-btn">ログインして開始</button>
+        <button id="auth-btn" class="btn-primary">ログインして開始</button>
     </div>
 </div>
 
 <div class="card">
     <h1>シフト希望入力</h1>
     <div id="notice-board" class="notice"></div>
-    <div style="text-align: right; font-size: 0.8rem; margin-bottom: 15px;">
-        ログイン中：<b id="login-user-name">---</b>さん
-        <a href="#" onclick="location.reload()" style="color:#3b82f6; margin-left:10px;">(ログアウト)</a>
+    <div class="user-bar">
+        <span>ログイン中：<span class="user-name" id="login-user-name">---</span> さん</span>
+        <a href="#" onclick="location.reload(); return false;">ログアウト</a>
     </div>
 
     <div class="input-group">
@@ -101,11 +365,11 @@
         <textarea id="note-input" rows="2" placeholder="遅刻・早退や特記事項があれば入力"></textarea>
     </div>
 
-    <button id="submit-btn">この内容で希望を送信</button>
+    <button id="submit-btn" class="btn-primary">この内容で希望を送信</button>
 
     <div class="history-section">
-        <h2 style="font-size: 1rem; margin-bottom: 10px;">あなたの送信済み希望（本日以降）</h2>
-        <div id="history-list">履歴を確認するにはログインしてください。</div>
+        <h2>あなたの送信済み希望（本日以降）</h2>
+        <div id="history-list"><p class="history-empty">履歴を確認するにはログインしてください</p></div>
     </div>
 </div>
 
@@ -223,14 +487,15 @@
             .order('work_date', { ascending: true });
             
         const list = document.getElementById('history-list');
-        list.innerHTML = data.length ? "" : "履歴はありません";
+        list.innerHTML = data.length ? "" : '<p class="history-empty">まだ希望の送信はありません</p>';
         data.forEach(h => {
-            let statusText = h.is_confirmed ? "確定済" : "未確定";
-            if (h.is_cancelled) statusText = "取消";
-            
+            let badgeClass = "status-pending", statusText = "未確定";
+            if (h.is_cancelled) { badgeClass = "status-cancelled"; statusText = "取消"; }
+            else if (h.is_confirmed) { badgeClass = "status-confirmed"; statusText = "確定済"; }
+
             const div = document.createElement('div');
             div.className = 'history-item';
-            div.innerHTML = `<div><b>${h.work_date}</b> [${statusText}]<br>${h.shift_time} (${h.role})</div><span class="del-hist" onclick="deleteRequest(${h.id})">削除</span>`;
+            div.innerHTML = `<div><b>${h.work_date}</b><span class="status-badge ${badgeClass}">${statusText}</span><br>${h.shift_time} <span style="color:#64748b;">(${h.role})</span></div><span class="del-hist" onclick="deleteRequest(${h.id})">削除</span>`;
             list.appendChild(div);
         });
     }
