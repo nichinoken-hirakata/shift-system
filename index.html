@@ -10,6 +10,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <script>
+        // Android判定（CSS適用のため<head>で即実行）
+        if (/Android/i.test(navigator.userAgent)) {
+            document.documentElement.classList.add('is-android');
+        }
+    </script>
     <style>
         :root {
             --primary: #6366f1;
@@ -266,31 +272,52 @@
         }
         .del-hist:active { background: var(--danger-bg); }
 
-        /* 認証オーバーレイ */
+        /* 認証オーバーレイ（深みのあるマルチグラデ＋ライトオーブ） */
         #auth-overlay {
             position: fixed; inset: 0;
-            background: linear-gradient(135deg, rgba(79,70,229,0.92) 0%, rgba(124,58,237,0.92) 100%);
+            background:
+                radial-gradient(ellipse at 15% 10%, rgba(244, 114, 182, 0.35) 0%, transparent 45%),
+                radial-gradient(ellipse at 85% 25%, rgba(96, 165, 250, 0.32) 0%, transparent 45%),
+                radial-gradient(circle at 50% 105%, rgba(167, 139, 250, 0.42) 0%, transparent 55%),
+                linear-gradient(160deg, #1e1b4b 0%, #312e81 35%, #4c1d95 65%, #6b21a8 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 100;
             padding: 20px;
-            padding-top: max(20px, env(safe-area-inset-top));
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
-            -webkit-backdrop-filter: blur(6px);
-            backdrop-filter: blur(6px);
         }
+        /* ガラスモーフィズムカード */
         .auth-card {
-            background: var(--surface);
-            padding: 28px 24px;
-            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.82);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(24px) saturate(180%);
+            padding: 34px 26px 28px;
+            border-radius: 24px;
             width: 100%;
             max-width: 360px;
-            box-shadow: 0 30px 60px -20px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow:
+                0 30px 70px -20px rgba(15, 23, 42, 0.55),
+                0 0 0 1px rgba(255, 255, 255, 0.18) inset;
         }
+        /* アイコンバッジ */
+        .auth-badge {
+            width: 64px; height: 64px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow:
+                0 14px 28px -8px rgba(99, 102, 241, 0.65),
+                0 0 0 4px rgba(255, 255, 255, 0.6);
+            transform: rotate(-6deg);
+        }
+        .auth-badge svg { width: 30px; height: 30px; }
         .auth-card h2 {
-            margin: 0 0 6px;
-            font-size: 1.25rem;
+            margin: 0 0 4px;
+            font-size: 1.35rem;
             font-weight: 800;
             text-align: center;
             background: var(--primary-gradient);
@@ -298,12 +325,21 @@
             background-clip: text;
             -webkit-text-fill-color: transparent;
             color: transparent;
+            letter-spacing: 0.03em;
         }
         .auth-subtitle {
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.76rem;
             color: var(--text-muted);
             margin: 0 0 18px;
+            letter-spacing: 0.08em;
+            font-weight: 500;
+        }
+        /* 細いディバイダー */
+        .auth-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #cbd5e1, transparent);
+            margin: 0 -26px 22px;
         }
 
         /* flatpickr微調整（カレンダーの角丸とフォント） */
@@ -312,14 +348,148 @@
             box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12) !important;
             font-family: inherit !important;
         }
+
+        /* ===== Android限定スタイル（白基調維持） ===== */
+        .is-android #auth-overlay {
+            background:
+                radial-gradient(ellipse at 15% 10%, rgba(236, 72, 153, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 85% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+                linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+        .is-android .auth-card {
+            background: #ffffff;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 50px -15px rgba(15, 23, 42, 0.2);
+        }
+
+        /* ホイール時刻ピッカー */
+        .wheel-modal {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 300;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .wheel-modal.open { display: flex; }
+        .wheel-dialog {
+            background: #fff;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 20px 20px 0 0;
+            padding-bottom: max(14px, env(safe-area-inset-bottom));
+            animation: wheelSlideUp 0.22s ease;
+            overflow: hidden;
+        }
+        @keyframes wheelSlideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .wheel-header {
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: #64748b;
+            padding: 14px 10px 10px;
+            letter-spacing: 0.05em;
+        }
+        .wheel-body {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            position: relative;
+            height: 210px;
+            margin: 4px 0 12px;
+        }
+        .wheel-col {
+            width: 90px;
+            height: 210px;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            -webkit-overflow-scrolling: touch;
+        }
+        .wheel-col::-webkit-scrollbar { display: none; }
+        .wheel-spacer { height: 84px; pointer-events: none; }
+        .wheel-item {
+            height: 42px;
+            line-height: 42px;
+            scroll-snap-align: center;
+            color: #cbd5e1;
+            font-weight: 500;
+            font-size: 20px;
+            transition: color 0.15s, font-size 0.15s, font-weight 0.15s;
+        }
+        .wheel-item.selected {
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 26px;
+        }
+        .wheel-sep {
+            align-self: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #cbd5e1;
+            padding: 0 4px;
+        }
+        .wheel-indicator {
+            position: absolute;
+            left: 12%; right: 12%;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 42px;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            pointer-events: none;
+            background: linear-gradient(180deg, transparent, rgba(99,102,241,0.04), transparent);
+        }
+        .wheel-footer {
+            display: flex;
+            padding: 0 14px 14px;
+            gap: 10px;
+        }
+        .wheel-btn {
+            flex: 1;
+            padding: 13px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .wheel-cancel { background: #f1f5f9; color: #475569; }
+        .wheel-ok {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: #fff;
+            box-shadow: 0 6px 14px -4px rgba(99,102,241,0.5);
+        }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
     <div class="auth-card">
+        <div class="auth-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="3"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+                <circle cx="8" cy="15" r="1" fill="white" stroke="none"/>
+                <circle cx="12" cy="15" r="1" fill="white" stroke="none"/>
+                <circle cx="16" cy="15" r="1" fill="white" stroke="none"/>
+            </svg>
+        </div>
         <h2>講師ログイン</h2>
         <p class="auth-subtitle">枚方駅前校 シフト希望システム</p>
+        <div class="auth-divider"></div>
         <div class="input-group">
             <label>自分の名前を選択</label>
             <select id="auth-name-select"></select>
@@ -534,6 +704,107 @@
     };
 
     init();
+
+    // ==== Android限定：カスタムホイール時刻ピッカー（iPhoneでは一切動作しない） ====
+    if (document.documentElement.classList.contains('is-android')) {
+        initWheelTimePicker();
+    }
+
+    function initWheelTimePicker() {
+        const modal = document.createElement('div');
+        modal.className = 'wheel-modal';
+        modal.innerHTML = `
+            <div class="wheel-dialog">
+                <div class="wheel-header">時刻を選択</div>
+                <div class="wheel-body">
+                    <div class="wheel-indicator"></div>
+                    <div class="wheel-col" data-col="h"></div>
+                    <div class="wheel-sep">:</div>
+                    <div class="wheel-col" data-col="m"></div>
+                </div>
+                <div class="wheel-footer">
+                    <button type="button" class="wheel-btn wheel-cancel">キャンセル</button>
+                    <button type="button" class="wheel-btn wheel-ok">決定</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const hCol = modal.querySelector('[data-col="h"]');
+        const mCol = modal.querySelector('[data-col="m"]');
+        const ITEM_H = 42;
+
+        function populate(col, max) {
+            col.innerHTML = '<div class="wheel-spacer"></div>' +
+                Array.from({length: max}, (_, i) =>
+                    `<div class="wheel-item" data-val="${i}">${String(i).padStart(2,'0')}</div>`
+                ).join('') +
+                '<div class="wheel-spacer"></div>';
+        }
+        populate(hCol, 24);
+        populate(mCol, 60);
+
+        function scrollToValue(col, val) {
+            col.scrollTop = val * ITEM_H;
+        }
+        function getValue(col) {
+            return Math.max(0, Math.round(col.scrollTop / ITEM_H));
+        }
+        function updateHighlight(col) {
+            const sel = getValue(col);
+            col.querySelectorAll('.wheel-item').forEach(it => {
+                it.classList.toggle('selected', parseInt(it.dataset.val) === sel);
+            });
+        }
+
+        let hTimer, mTimer;
+        hCol.addEventListener('scroll', () => {
+            clearTimeout(hTimer);
+            hTimer = setTimeout(() => updateHighlight(hCol), 40);
+        });
+        mCol.addEventListener('scroll', () => {
+            clearTimeout(mTimer);
+            mTimer = setTimeout(() => updateHighlight(mCol), 40);
+        });
+
+        let targetInput = null;
+
+        function openPicker(input) {
+            targetInput = input;
+            const [h, m] = (input.value || '16:30').split(':').map(Number);
+            modal.classList.add('open');
+            requestAnimationFrame(() => {
+                scrollToValue(hCol, h);
+                scrollToValue(mCol, m);
+                setTimeout(() => { updateHighlight(hCol); updateHighlight(mCol); }, 80);
+            });
+        }
+        function closePicker() { modal.classList.remove('open'); }
+
+        modal.querySelector('.wheel-cancel').onclick = closePicker;
+        modal.querySelector('.wheel-ok').onclick = () => {
+            if (targetInput) {
+                const h = String(getValue(hCol)).padStart(2, '0');
+                const m = String(getValue(mCol)).padStart(2, '0');
+                targetInput.value = `${h}:${m}`;
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            closePicker();
+        };
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closePicker();
+        });
+
+        // 既存のtime入力を乗っ取る
+        document.querySelectorAll('input[type="time"]').forEach(input => {
+            input.readOnly = true;
+            input.addEventListener('focus', (e) => e.target.blur());
+            input.addEventListener('click', (e) => {
+                e.preventDefault();
+                openPicker(input);
+            });
+        });
+    }
 </script>
 </body>
 </html>
