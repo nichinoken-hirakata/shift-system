@@ -57,7 +57,22 @@
             .fc-view-harness { min-height: 180mm !important; }
             .fc-scroller { overflow: visible !important; height: auto !important; }
             .fc-scrollgrid-liquid { height: auto !important; }
-            .fc-header-toolbar { margin-bottom: 5px !important; }
+            /* 右端の空白対策：内部テーブルも用紙幅まで確実に広げる */
+            .fc table,
+            .fc-scrollgrid-sync-table,
+            .fc-col-header,
+            .fc-daygrid-body,
+            .fc-daygrid-body > table {
+                width: 100% !important;
+                min-width: 287mm !important;
+            }
+            /* prev/next/today ボタンを印刷時は非表示＋タイトルを中央に寄せる */
+            .fc-toolbar-chunk:first-child { display: none !important; }
+            .fc-header-toolbar {
+                justify-content: center !important;
+                margin-bottom: 5px !important;
+            }
+            .fc-toolbar-title { text-align: center !important; font-size: 14pt !important; }
             .fc-event-title { font-size: 8px !important; line-height: 1.1; }
             .fc-day.holiday-cell {
                 background-color: #1e293b !important;
@@ -91,6 +106,7 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZla3NsY3F2dHRqaGplcHZhc2xwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMDUyMjMsImV4cCI6MjA5MTc4MTIyM30.IX0dEp68SVr90AJKK9yzrNKv1GOIwSKllBahmE0zj0M';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const ROLE_COLORS = { 'チューター': '#ef4444', 'テスト監督': '#f59e0b', '事務': '#10b981' };
+    const ROLE_PREFIX = { 'チューター': '（チ）', 'テスト監督': '（テ）', '事務': '（事）' };
 
     function fmtLocalDate(d) {
         const y = d.getFullYear();
@@ -130,10 +146,11 @@
             let color = ROLE_COLORS[sh.role] || '#3b82f6';
             if (sh.is_cancelled) color = '#94a3b8';
 
-            let titlePrefix = sh.is_modified ? "【変】" : "";
+            let modPrefix = sh.is_modified ? "【変】" : "";
+            let rolePrefix = ROLE_PREFIX[sh.role] || "";
 
             calendar.addEvent({
-                title: `${titlePrefix}${sh.staff_name}さん(${sh.shift_time})`,
+                title: `${modPrefix}${rolePrefix}${sh.staff_name}さん(${sh.shift_time})`,
                 start: sh.work_date,
                 backgroundColor: color,
                 borderColor: color

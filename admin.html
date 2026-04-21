@@ -167,7 +167,8 @@
         <div style="display:flex; gap:10px; align-items:center; margin-top:5px; margin-bottom:15px;">
             <input type="time" id="edit-start"><span>〜</span><input type="time" id="edit-end">
         </div>
-        <label style="color:#ef4444;"><input type="checkbox" id="edit-cancel"> キャンセル(欠勤)</label>
+        <label style="color:#ef4444; display:block; margin-bottom:6px;"><input type="checkbox" id="edit-cancel"> キャンセル(欠勤)</label>
+        <label style="color:#059669; display:block; padding:6px 8px; background:#ecfdf5; border-radius:6px; border:1px solid #a7f3d0;"><input type="checkbox" id="edit-confirm"> 確定する（確定シフト表に公開）</label>
         <div style="display:flex; justify-content:space-between; margin-top:20px;">
             <button id="edit-delete-btn" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">削除</button>
             <div>
@@ -351,6 +352,7 @@
         } else { noteBox.style.display = "none"; }
         document.getElementById('edit-role').value = sh.role;
         document.getElementById('edit-cancel').checked = sh.is_cancelled;
+        document.getElementById('edit-confirm').checked = sh.is_confirmed;
         const times = sh.shift_time.split('〜');
         document.getElementById('edit-start').value = times[0];
         document.getElementById('edit-end').value = times[1];
@@ -361,11 +363,13 @@
 
     document.getElementById('edit-save-btn').onclick = async () => {
         const isMod = editingShift.is_confirmed ? true : editingShift.is_modified;
+        const willConfirm = document.getElementById('edit-confirm').checked;
         await _supabase.from('shifts').update({
             role: document.getElementById('edit-role').value,
             shift_time: `${document.getElementById('edit-start').value}〜${document.getElementById('edit-end').value}`,
             is_cancelled: document.getElementById('edit-cancel').checked,
-            is_modified: isMod
+            is_modified: isMod,
+            is_confirmed: willConfirm
         }).eq('id', editingShift.id);
         closeModal(); fetchAll();
     };
