@@ -84,6 +84,18 @@
                 <button id="save-default-btn" class="btn" style="width:100%; background-color:#10b981;">時間を一括設定</button>
             </div>
 
+            <div class="section" style="margin-bottom:0;">
+                <h2>休校日の設定</h2>
+                <label>定休曜日（複数選択可）</label>
+                <div id="holiday-weekdays" style="display:flex; gap:6px; margin-top:5px; margin-bottom:15px; flex-wrap:wrap;"></div>
+                <label>特定の休校日（イレギュラー・複数選択可）</label>
+                <input type="text" id="holiday-dates-picker" placeholder="休校日を選択" style="margin-top:5px; margin-bottom:10px;">
+                <button id="save-holiday-btn" class="btn" style="width:100%; background-color:#ef4444;">休校日を保存</button>
+                <p style="font-size:0.75rem; color:#64748b; margin-top:8px;">
+                    ※保存すると、アルバイトのシフト希望入力画面ではその日が選択できなくなり、確定表では黒く塗りつぶされます。
+                </p>
+            </div>
+
         </div>
 
         <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 20px;">
@@ -189,6 +201,38 @@
 
     const adminFp = flatpickr("#default-date-picker", { mode: "multiple", dateFormat: "Y-m-d", locale: "ja" });
     const proxyFp = flatpickr("#proxy-date", { dateFormat: "Y-m-d", locale: "ja" });
+    const holidayFp = flatpickr("#holiday-dates-picker", { mode: "multiple", dateFormat: "Y-m-d", locale: "ja" });
+
+    // 定休曜日チェックボックスを生成
+    const WEEKDAY_LABELS = ['日','月','火','水','木','金','土'];
+    const wdContainer = document.getElementById('holiday-weekdays');
+    WEEKDAY_LABELS.forEach((lbl, idx) => {
+        const wrap = document.createElement('label');
+        wrap.style.cssText = "display:flex; align-items:center; gap:4px; background:#f1f5f9; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:0.9rem;";
+        wrap.innerHTML = `<input type="checkbox" value="${idx}" class="hol-wd" style="margin:0;"> ${lbl}`;
+        wdContainer.appendChild(wrap);
+    });
+
+    async function loadHolidayConfig() {
+        const { data } = await _supabase.from('settings').select('value').eq('key', 'holiday_config');
+        if (data && data[0]) {
+            try {
+                const cfg = JSON.parse(data[0].value);
+                document.querySelectorAll('.hol-wd').forEach(cb => {
+                    cb.checked = cfg.weekdays?.includes(parseInt(cb.value)) || false;
+                });
+                if (cfg.dates?.length) holidayFp.setDate(cfg.dates);
+            } catch(e) { console.error(e); }
+        }
+    }
+
+    document.getElementById('save-holiday-btn').onclick = async () => {
+        const weekdays = Array.from(document.querySelectorAll('.hol-wd:checked')).map(cb => parseInt(cb.value));
+        const dates = holidayFp.selectedDates.map(d => flatpickr.formatDate(d, "Y-m-d"));
+        const config = { weekdays, dates };
+        const { error } = await _supabase.from('settings').upsert({ key: 'holiday_config', value: JSON.stringify(config) });
+        if (error) { alert("保存に失敗: " + error.message); } else { alert("休校日を保存しました"); }
+    };
 
     window.onload = async function() {
         calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
@@ -198,6 +242,7 @@
         calendar.render();
         fetchAll();
         loadSettings();
+        loadHolidayConfig();
 
         // 補足：最新のお知らせを自動取得して表示
         const { data: noticeData } = await _supabase.from('notice').select('content').order('created_at', { ascending: false }).limit(1);

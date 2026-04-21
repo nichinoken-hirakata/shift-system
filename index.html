@@ -17,7 +17,31 @@
         .notice { background: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; color: #be123c; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: #475569; font-size: 0.85rem; }
-        select, input, textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background-color: #fff;
+            color: #1e293b;
+            font-family: inherit;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        input[type="time"] {
+            min-height: 48px;
+            line-height: 1.2;
+            text-align: center;
+            display: block;
+        }
+        /* iOSのtime入力に残る内側余白や背景を確実に打ち消す */
+        input[type="time"]::-webkit-date-and-time-value {
+            text-align: center;
+            min-height: 1.2em;
+        }
         textarea { resize: vertical; }
         button { width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
         .history-section { margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 20px; }
@@ -67,9 +91,9 @@
         <input type="text" id="date-picker" placeholder="カレンダーをタップして選択">
     </div>
 
-    <div style="display:flex; gap:10px;" class="input-group">
-        <div style="flex:1; min-width: 0;"><label>開始</label><input type="time" id="start-time" value="16:30"></div>
-        <div style="flex:1; min-width: 0;"><label>終了</label><input type="time" id="end-time" value="21:15"></div>
+    <div class="input-group" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div><label>開始</label><input type="time" id="start-time" value="16:30"></div>
+        <div><label>終了</label><input type="time" id="end-time" value="21:15"></div>
     </div>
     
     <div class="input-group">
@@ -128,6 +152,22 @@
 
         const { data: defaultData } = await _supabase.from('default_times').select('*');
         defaultData?.forEach(d => { customDefaults[d.date] = d; });
+
+        // 休校日設定の反映（定休曜日＋特定日を選択不可にする）
+        const { data: holidayData } = await _supabase.from('settings').select('value').eq('key', 'holiday_config');
+        if (holidayData && holidayData[0]) {
+            try {
+                const cfg = JSON.parse(holidayData[0].value);
+                const disableList = [];
+                if (cfg.weekdays?.length) {
+                    disableList.push(function(date) {
+                        return cfg.weekdays.includes(date.getDay());
+                    });
+                }
+                if (cfg.dates?.length) disableList.push(...cfg.dates);
+                if (disableList.length) fp.set('disable', disableList);
+            } catch(e) { console.error(e); }
+        }
     }
 
     document.getElementById('auth-name-select').onchange = function() {
