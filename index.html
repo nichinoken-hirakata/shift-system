@@ -100,6 +100,25 @@
             font-size: 1.1rem;
         }
 
+        /* テスト日程表示 */
+        .test-info {
+            background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%);
+            border: 1px solid #c4b5fd;
+            padding: 10px 14px 10px 40px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 0.84rem;
+            color: #4c1d95;
+            line-height: 1.7;
+            position: relative;
+        }
+        .test-info::before {
+            content: "📝";
+            position: absolute;
+            left: 12px; top: 10px;
+            font-size: 1.1rem;
+        }
+
         /* ユーザーバー */
         .user-bar {
             display: flex;
@@ -506,6 +525,7 @@
 <div class="card">
     <h1>シフト希望入力</h1>
     <div id="notice-board" class="notice"></div>
+    <div id="test-info" class="test-info" style="display:none;"></div>
     <div class="user-bar">
         <span>ログイン中：<span class="user-name" id="login-user-name">---</span> さん</span>
         <a href="#" onclick="location.reload(); return false;">ログアウト</a>
@@ -551,6 +571,7 @@
     let currentUser = null;
     let staffList = [];
     let customDefaults = {};
+    let testScheduleData = [];
 
     const fp = flatpickr("#date-picker", { 
         mode: "multiple", 
@@ -566,6 +587,7 @@
                     document.getElementById('start-time').value = customDefaults[fDate].start_time;
                     document.getElementById('end-time').value = customDefaults[fDate].end_time;
                 }
+                autoFillTestTime(fDate);
             }
         }
     });
@@ -586,6 +608,13 @@
 
         const { data: defaultData } = await _supabase.from('default_times').select('*');
         defaultData?.forEach(d => { customDefaults[d.date] = d; });
+
+        // テスト日程の取得
+        const { data: testData } = await _supabase.from('settings').select('value').eq('key', 'test_schedule');
+        if (testData && testData[0]) {
+            try { testScheduleData = JSON.parse(testData[0].value); } catch(e) {}
+        }
+        loadTestInfo();
 
         // 休校日設定の反映（定休曜日＋特定日を選択不可にする）
         const { data: holidayData } = await _supabase.from('settings').select('value').eq('key', 'holiday_config');
@@ -702,6 +731,61 @@
         document.getElementById('note-input').value = "";
         loadMyHistory();
     };
+
+    // テスト日の自動入力（テスト監督のみ）
+    function autoFillTestTime(dateStr) {
+        if (document.getElementById('role-select').value !== 'テスト監督') return;
+        const entry = testScheduleData.find(t => t.date === dateStr);
+        if (!entry) return;
+        if (entry.type === 'mae_uke') {
+            document.getElementById('start-time').value = '16:30';
+            document.getElementById('end-time').value = '21:15';
+        } else {
+            document.getElementById('start-time').value = '08:30';
+            document.getElementById('end-time').value = '12:50';
+        }
+    }
+
+    // 職種が「テスト監督」に変わったとき、選択中の日付があれば自動入力
+    document.getElementById('role-select').addEventListener('change', function() {
+        const dates = fp.selectedDates;
+        if (dates.length > 0) {
+            const fDate = flatpickr.formatDate(dates[dates.length - 1], "Y-m-d");
+            autoFillTestTime(fDate);
+        }
+    });
+
+    // テスト日程の表示（今月 + 15日以降なら来月分も）
+    function loadTestInfo() {
+        const el = document.getElementById('test-info');
+        if (!testScheduleData || testScheduleData.length === 0) { el.style.display = 'none'; return; }
+
+        const today = new Date();
+        const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+        const months = [{ y, m }];
+        if (d >= 15) {
+            months.push(m === 11 ? { y: y + 1, m: 0 } : { y, m: m + 1 });
+        }
+
+        const relevant = testScheduleData
+            .filter(t => {
+                const dt = new Date(t.date + 'T00:00:00');
+                return months.some(mon => dt.getFullYear() === mon.y && dt.getMonth() === mon.m);
+            })
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (relevant.length === 0) { el.style.display = 'none'; return; }
+
+        const lines = relevant.map(t => {
+            const p = t.date.split('-');
+            const label = `${parseInt(p[1])}/${parseInt(p[2])}`;
+            const typeStr = t.type === 'mae_uke' ? '【前受け】' : '【テスト】';
+            return `${label} ${typeStr} ${t.display}${t.grades ? '（' + t.grades + '年）' : ''}`;
+        });
+
+        el.style.display = 'block';
+        el.innerHTML = '<strong>近日のテスト日程：</strong><br>' + lines.join('<br>');
+    }
 
     init();
 

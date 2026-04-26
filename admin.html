@@ -134,6 +134,40 @@
     </div>
 
     <div class="section">
+        <h2>📝 テスト・前受け日程管理</h2>
+        <p style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
+            ※ 初回は「2026年度初期データを登録」を押してください。その後、内容を管理者パネルから修正・追加してください。<br>
+            ※ 前受けは別途手動で追加してください（テスト日の2日前）。
+        </p>
+        <button id="load-initial-tests-btn" class="btn" style="background:#7c3aed; margin-bottom:14px;">2026年度 初期データを登録（要確認）</button>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+            <div><label>テスト日</label><input type="text" id="test-date-input" placeholder="日付を選択" style="margin-top:4px;"></div>
+            <div><label>表示名（略称）</label><input type="text" id="test-display" placeholder="例：学育⑤（3〜5年）" style="margin-top:4px;"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; align-items:end;">
+            <div>
+                <label>対象学年</label>
+                <input type="text" id="test-grades" placeholder="例：3,4,5,6" style="margin-top:4px;">
+            </div>
+            <div>
+                <label>種別</label>
+                <select id="test-type" style="margin-top:4px;">
+                    <option value="test">通常テスト（土日）</option>
+                    <option value="mae_uke">前受け（木・金）</option>
+                </select>
+            </div>
+            <button id="add-test-btn" class="btn" style="background:#8b5cf6;">追加</button>
+        </div>
+        <div id="test-list" style="background:#f8fafc; border-radius:8px; padding:10px; max-height:320px; overflow-y:auto; margin-bottom:16px; font-size:0.85rem;">読み込み中...</div>
+
+        <div style="background:#fef2f2; padding:12px; border-radius:8px; border:1px solid #fecaca;">
+            <p style="font-size:0.8rem; color:#991b1b; margin:0 0 8px;"><strong>🗑 データクリーンアップ</strong><br>1年以上前のシフトデータを削除します（名前・日時など全て消去）。</p>
+            <button id="cleanup-btn" class="btn" style="background:#ef4444; width:100%;">1年以上前のシフトを削除</button>
+        </div>
+    </div>
+
+    <div class="section">
         <h2>シフトカレンダー（✉️：メッセージあり）</h2>
         <div class="legend">
             <div class="legend-item"><span class="dot" style="background-color: #ef4444;"></span>チューター</div>
@@ -205,6 +239,7 @@
     const adminFp = flatpickr("#default-date-picker", { mode: "multiple", dateFormat: "Y-m-d", locale: "ja" });
     const proxyFp = flatpickr("#proxy-date", { dateFormat: "Y-m-d", locale: "ja" });
     const holidayFp = flatpickr("#holiday-dates-picker", { mode: "multiple", dateFormat: "Y-m-d", locale: "ja" });
+    const testDateFp = flatpickr("#test-date-input", { dateFormat: "Y-m-d", locale: "ja" });
 
     // 定休曜日チェックボックスを生成
     const WEEKDAY_LABELS = ['日','月','火','水','木','金','土'];
@@ -248,6 +283,7 @@
         loadHolidayConfig();
 
         loadCurrentNotice();
+        loadTestList();
     };
 
     // 最新のお知らせを取得して、現在公開中の枠＋編集用テキストエリアの両方にセット
@@ -435,6 +471,118 @@
         await _supabase.from('notice').insert({ content: content });
         alert("保存しました");
         loadCurrentNotice();
+    };
+
+    // ===== テスト日程管理 =====
+    async function getTestSchedule() {
+        const { data } = await _supabase.from('settings').select('value').eq('key', 'test_schedule');
+        if (data && data[0]) {
+            try { return JSON.parse(data[0].value); } catch(e) { return []; }
+        }
+        return [];
+    }
+
+    async function saveTestSchedule(schedule) {
+        const { error } = await _supabase.from('settings').upsert({ key: 'test_schedule', value: JSON.stringify(schedule) });
+        if (error) alert('保存エラー: ' + error.message);
+    }
+
+    async function loadTestList() {
+        const list = await getTestSchedule();
+        const el = document.getElementById('test-list');
+        if (!list || list.length === 0) {
+            el.innerHTML = '<p style="color:#94a3b8; text-align:center; margin:16px 0;">テスト日程はまだ登録されていません</p>';
+            return;
+        }
+        list.sort((a, b) => a.date.localeCompare(b.date));
+        el.innerHTML = list.map(t => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #f1f5f9;">
+                <div>
+                    <span style="color:#7c3aed; font-weight:bold; font-size:0.9rem;">${t.date}</span>
+                    <span style="margin-left:8px; font-weight:bold;">${t.display}</span>
+                    ${t.grades ? `<span style="margin-left:6px; font-size:0.75rem; color:#64748b;">${t.grades}年</span>` : ''}
+                    <span style="margin-left:6px; font-size:0.75rem; padding:2px 5px; border-radius:4px; background:${t.type === 'mae_uke' ? '#ddd6fe' : '#e0e7ff'}; color:${t.type === 'mae_uke' ? '#6d28d9' : '#3730a3'};">${t.type === 'mae_uke' ? '前受け' : 'テスト'}</span>
+                </div>
+                <button onclick="deleteTest('${t.id}')" style="flex-shrink:0; background:#fef2f2; color:#ef4444; border:1px solid #fecaca; border-radius:4px; padding:2px 10px; cursor:pointer; font-size:0.8rem;">削除</button>
+            </div>
+        `).join('');
+    }
+
+    window.deleteTest = async (id) => {
+        if (!confirm('この日程を削除しますか？')) return;
+        const list = await getTestSchedule();
+        await saveTestSchedule(list.filter(t => t.id !== id));
+        loadTestList();
+    };
+
+    document.getElementById('add-test-btn').onclick = async () => {
+        const dateStr = document.getElementById('test-date-input').value;
+        const display = document.getElementById('test-display').value.trim();
+        if (!dateStr) { alert('テスト日を選択してください'); return; }
+        if (!display) { alert('表示名（略称）を入力してください'); return; }
+        const list = await getTestSchedule();
+        list.push({
+            id: Date.now().toString(),
+            date: dateStr,
+            display,
+            grades: document.getElementById('test-grades').value.trim(),
+            type: document.getElementById('test-type').value
+        });
+        await saveTestSchedule(list);
+        testDateFp.clear();
+        document.getElementById('test-display').value = '';
+        document.getElementById('test-grades').value = '';
+        await loadTestList();
+        alert('追加しました');
+    };
+
+    document.getElementById('load-initial-tests-btn').onclick = async () => {
+        if (!confirm('2026年度の初期テスト日程を登録します。\n※ カリキュラム進行表から推定した日程です。登録後、内容を確認・修正してください。\n既存データに追記されます。よろしいですか？')) return;
+
+        const initial2026 = [
+            { id:'i2026_01', date:'2026-04-11', display:'学育テスト④',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_02', date:'2026-04-25', display:'公開模試④',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_03', date:'2026-05-09', display:'学育テスト⑤',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_04', date:'2026-05-23', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_05', date:'2026-06-06', display:'学育テスト⑥',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_06', date:'2026-06-20', display:'公開模試⑤',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_07', date:'2026-07-04', display:'学育テスト⑦',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_08', date:'2026-07-18', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_09', date:'2026-08-01', display:'夏期テスト①',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_10', date:'2026-08-22', display:'夏期テスト②',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_11', date:'2026-09-05', display:'学育テスト⑧',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_12', date:'2026-09-19', display:'公開模試⑥',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_13', date:'2026-10-03', display:'学育テスト⑨',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_14', date:'2026-10-17', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_15', date:'2026-11-07', display:'学育テスト⑩',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_16', date:'2026-11-21', display:'公開模試⑦',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_17', date:'2026-12-05', display:'学育テスト⑪',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_18', date:'2026-12-19', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_19', date:'2027-01-09', display:'学育テスト⑫',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_20', date:'2027-01-23', display:'公開模試⑧',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_21', date:'2027-02-06', display:'学育テスト⑬',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_22', date:'2027-02-20', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
+            { id:'i2026_23', date:'2027-03-06', display:'学育テスト⑭',  grades:'3,4,5,6', type:'test' },
+            { id:'i2026_24', date:'2027-03-20', display:'公開模試⑨',    grades:'3,4,5,6', type:'test' },
+        ];
+
+        const existing = await getTestSchedule();
+        const existingDates = new Set(existing.map(t => t.date));
+        const toAdd = initial2026.filter(t => !existingDates.has(t.date));
+        await saveTestSchedule([...existing, ...toAdd]);
+        await loadTestList();
+        alert(`登録完了：${toAdd.length}件を追加しました。\n⚠️ 日程はカリキュラム表から推定したものです。実際の日程と照らし合わせて修正してください。`);
+    };
+
+    document.getElementById('cleanup-btn').onclick = async () => {
+        if (!confirm('1年以上前のシフトデータをすべて削除します。\nこの操作は取り消せません。本当によろしいですか？')) return;
+        const cutoff = new Date();
+        cutoff.setFullYear(cutoff.getFullYear() - 1);
+        const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+        const { error } = await _supabase.from('shifts').delete().lt('work_date', cutoffStr);
+        if (error) { alert('削除に失敗しました: ' + error.message); return; }
+        alert(`${cutoffStr} より前のシフトデータを削除しました。`);
+        fetchAll();
     };
 </script>
 </body>

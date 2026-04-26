@@ -18,6 +18,11 @@
         #calendar { background: white; min-height: 500px; }
         .fc-event-title { white-space: normal !important; font-size: 0.75rem; }
 
+        /* テスト日ラベル（日付の左に表示） */
+        .test-day-label { font-size: 0.6rem; font-weight: 700; line-height: 1.2; white-space: nowrap; padding: 2px 0 0 2px; }
+        .fc-day.test-day-cell { border-top: 3px solid #8b5cf6 !important; }
+        .fc-day.mae-uke-cell  { border-top: 3px solid #7c3aed !important; }
+
         /* 休校日セル（画面表示・印刷共通） */
         .fc-day.holiday-cell { background-color: #1e293b !important; }
         .fc-day.holiday-cell .fc-daygrid-day-number { color: #fff !important; opacity: 0.6; }
@@ -79,6 +84,10 @@
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
+            .test-day-label {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>
@@ -96,6 +105,8 @@
             <div class="legend-item"><div class="color-box" style="background: #f59e0b;"></div> テスト監督</div>
             <div class="legend-item"><div class="color-box" style="background: #10b981;"></div> 事務</div>
             <div class="legend-item"><div class="color-box" style="background: #94a3b8;"></div> 取消(欠勤)</div>
+            <div class="legend-item"><div class="color-box" style="background: #8b5cf6;"></div> テスト日</div>
+            <div class="legend-item"><div class="color-box" style="background: #7c3aed;"></div> 前受け</div>
         </div>
         <div id="calendar"></div>
     </div>
@@ -116,11 +127,23 @@
     }
 
     window.onload = async function() {
-        // 休校日設定の取得
+        // 設定情報を並列取得
+        const [{ data: hData }, { data: testData }, { data: shData }] = await Promise.all([
+            _supabase.from('settings').select('value').eq('key', 'holiday_config'),
+            _supabase.from('settings').select('value').eq('key', 'test_schedule'),
+            _supabase.from('shifts').select('*').eq('is_confirmed', true)
+        ]);
+
+        // 休校日設定
         let holidayConfig = { weekdays: [], dates: [] };
-        const { data: hData } = await _supabase.from('settings').select('value').eq('key', 'holiday_config');
         if (hData && hData[0]) {
             try { holidayConfig = JSON.parse(hData[0].value); } catch(e) { console.error(e); }
+        }
+
+        // テスト日程
+        let testSchedule = [];
+        if (testData && testData[0]) {
+            try { testSchedule = JSON.parse(testData[0].value); } catch(e) { console.error(e); }
         }
 
         const calendarEl = document.getElementById('calendar');
@@ -134,14 +157,35 @@
                 const dateStr = fmtLocalDate(arg.date);
                 const isHoliday = (holidayConfig.weekdays || []).includes(arg.date.getDay())
                     || (holidayConfig.dates || []).includes(dateStr);
-                return isHoliday ? ['holiday-cell'] : [];
+                if (isHoliday) return ['holiday-cell'];
+                const entry = testSchedule.find(e => e.date === dateStr);
+                if (entry) return [entry.type === 'mae_uke' ? 'mae-uke-cell' : 'test-day-cell'];
+                return [];
+            },
+            dayCellDidMount: function(arg) {
+                const dateStr = fmtLocalDate(arg.date);
+                const entry = testSchedule.find(e => e.date === dateStr);
+                if (!entry) return;
+                const typeShort = entry.type === 'mae_uke' ? '前受' : 'テスト';
+                const nums = (entry.grades || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b);
+                const gradesStr = nums.length === 0 ? '' : nums.length === 1 ? `${nums[0]}` : `${nums[0]}-${nums[nums.length - 1]}`;
+                const dispShort = entry.display.replace(/[①-⑳]/g, '').slice(0, 2);
+                const label = `${typeShort}:${gradesStr}${dispShort}`;
+                const color = entry.type === 'mae_uke' ? '#7c3aed' : '#8b5cf6';
+                const top = arg.el.querySelector('.fc-daygrid-day-top');
+                if (top) {
+                    const span = document.createElement('span');
+                    span.className = 'test-day-label';
+                    span.textContent = label;
+                    span.style.color = color;
+                    top.appendChild(span);
+                    top.style.justifyContent = 'space-between';
+                }
             }
         });
         calendar.render();
 
-        // 確定済みのものだけ取得。変更はSupabase側で行うのでリセットされません。
-        const { data: shData } = await _supabase.from('shifts').select('*').eq('is_confirmed', true);
-        
+        // 確定済みシフトを表示
         shData?.forEach(sh => {
             let color = ROLE_COLORS[sh.role] || '#3b82f6';
             if (sh.is_cancelled) color = '#94a3b8';
