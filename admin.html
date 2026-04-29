@@ -135,11 +135,6 @@
 
     <div class="section">
         <h2>📝 テスト・前受け日程管理</h2>
-        <p style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">
-            ※ 初回は「2026年度初期データを登録」を押してください。その後、内容を管理者パネルから修正・追加してください。<br>
-            ※ 前受けは別途手動で追加してください（テスト日の2日前）。
-        </p>
-        <button id="load-initial-tests-btn" class="btn" style="background:#7c3aed; margin-bottom:14px;">2026年度 初期データを登録（要確認）</button>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
             <div><label>テスト日</label><input type="text" id="test-date-input" placeholder="日付を選択" style="margin-top:4px;"></div>
@@ -166,6 +161,7 @@
             <button id="cleanup-btn" class="btn" style="background:#ef4444; width:100%;">1年以上前のシフトを削除</button>
         </div>
     </div>
+
 
     <div class="section">
         <h2>シフトカレンダー（✉️：メッセージあり）</h2>
@@ -536,42 +532,120 @@
         alert('追加しました');
     };
 
+    function getDayBeforeTest(dateStr, targetWeekday) {
+        const date = new Date(dateStr);
+        const currentWeekday = date.getDay();
+
+        let daysBack = (currentWeekday - targetWeekday + 7) % 7;
+        if (daysBack === 0) daysBack = 7;
+
+        const result = new Date(date);
+        result.setDate(result.getDate() - daysBack);
+
+        const y = result.getFullYear();
+        const m = String(result.getMonth() + 1).padStart(2, '0');
+        const d = String(result.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
     document.getElementById('load-initial-tests-btn').onclick = async () => {
-        if (!confirm('2026年度の初期テスト日程を登録します。\n※ カリキュラム進行表から推定した日程です。登録後、内容を確認・修正してください。\n既存データに追記されます。よろしいですか？')) return;
+        if (!confirm('⚠️ 【警告】プログラムを内部的に破壊する危険があるので、作成者以外は触らないでください。\n\nテスト日程を登録します。\n※ テスト日程と前受けが一括登録されます。\n※ 既存データに追記されます。\n\n本当に実行しますか？')) return;
 
         const initial2026 = [
-            { id:'i2026_01', date:'2026-04-11', display:'学育テスト④',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_02', date:'2026-04-25', display:'公開模試④',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_03', date:'2026-05-09', display:'学育テスト⑤',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_04', date:'2026-05-23', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_05', date:'2026-06-06', display:'学育テスト⑥',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_06', date:'2026-06-20', display:'公開模試⑤',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_07', date:'2026-07-04', display:'学育テスト⑦',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_08', date:'2026-07-18', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_09', date:'2026-08-01', display:'夏期テスト①',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_10', date:'2026-08-22', display:'夏期テスト②',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_11', date:'2026-09-05', display:'学育テスト⑧',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_12', date:'2026-09-19', display:'公開模試⑥',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_13', date:'2026-10-03', display:'学育テスト⑨',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_14', date:'2026-10-17', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_15', date:'2026-11-07', display:'学育テスト⑩',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_16', date:'2026-11-21', display:'公開模試⑦',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_17', date:'2026-12-05', display:'学育テスト⑪',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_18', date:'2026-12-19', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_19', date:'2027-01-09', display:'学育テスト⑫',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_20', date:'2027-01-23', display:'公開模試⑧',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_21', date:'2027-02-06', display:'学育テスト⑬',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_22', date:'2027-02-20', display:'全国テスト',    grades:'3,4,5,6', type:'test' },
-            { id:'i2026_23', date:'2027-03-06', display:'学育テスト⑭',  grades:'3,4,5,6', type:'test' },
-            { id:'i2026_24', date:'2027-03-20', display:'公開模試⑨',    grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0208', date:'2026-02-08', display:'公開①',        grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0215', date:'2026-02-15', display:'学育⑩',        grades:'5,6',     type:'test' },
+            { id:'pdf_0221', date:'2026-02-21', display:'学育①',        grades:'4,5',     type:'test' },
+            { id:'pdf_0222', date:'2026-02-22', display:'学育①',        grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0228', date:'2026-02-28', display:'公開①',        grades:'4',       type:'test' },
+            { id:'pdf_0301', date:'2026-03-01', display:'全国3-5',      grades:'3,4,5',   type:'test' },
+            { id:'pdf_0307', date:'2026-03-07', display:'学育②',        grades:'4,5',     type:'test' },
+            { id:'pdf_0308', date:'2026-03-08', display:'学育②',        grades:'3,5,6',   type:'test' },
+            { id:'pdf_0314', date:'2026-03-14', display:'公開②',        grades:'5,6',     type:'test' },
+            { id:'pdf_0315', date:'2026-03-15', display:'全国2年',      grades:'2',       type:'test' },
+            { id:'pdf_0321', date:'2026-03-21', display:'学育③',        grades:'4,5',     type:'test' },
+            { id:'pdf_0322', date:'2026-03-22', display:'学育③',        grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0405', date:'2026-04-05', display:'公開③',        grades:'3,5,6',   type:'test' },
+            { id:'pdf_0412', date:'2026-04-12', display:'学育⑮',        grades:'5,6',     type:'test' },
+            { id:'pdf_0418', date:'2026-04-18', display:'学育④',        grades:'4,5',     type:'test' },
+            { id:'pdf_0419', date:'2026-04-19', display:'学育④',        grades:'3,5,6',   type:'test' },
+            { id:'pdf_0425', date:'2026-04-25', display:'公開②',        grades:'4',       type:'test' },
+            { id:'pdf_0426', date:'2026-04-26', display:'チェック③',    grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0509', date:'2026-05-09', display:'学育⑤',        grades:'4,5',     type:'test' },
+            { id:'pdf_0510', date:'2026-05-10', display:'学育⑤',        grades:'3,5,6',   type:'test' },
+            { id:'pdf_0516', date:'2026-05-16', display:'チェック④',    grades:'4',       type:'test' },
+            { id:'pdf_0517', date:'2026-05-17', display:'学育⑲',        grades:'5',       type:'test' },
+            { id:'pdf_0523', date:'2026-05-23', display:'学育⑥',        grades:'4,5',     type:'test' },
+            { id:'pdf_0524', date:'2026-05-24', display:'学育⑥',        grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0530', date:'2026-05-30', display:'公開⑤',        grades:'4,5,6',   type:'test' },
+            { id:'pdf_0606', date:'2026-06-06', display:'学育⑦',        grades:'4,5',     type:'test' },
+            { id:'pdf_0607', date:'2026-06-07', display:'学育⑦',        grades:'3,6',     type:'test' },
+            { id:'pdf_0614', date:'2026-06-14', display:'全国3-5',      grades:'3,4,5',   type:'test' },
+            { id:'pdf_0620', date:'2026-06-20', display:'学育⑧',        grades:'4,5,6',   type:'test' },
+            { id:'pdf_0621', date:'2026-06-21', display:'全国2年',      grades:'2',       type:'test' },
+            { id:'pdf_0627', date:'2026-06-27', display:'公開⑥',        grades:'4,5,6',   type:'test' },
+            { id:'pdf_0704', date:'2026-07-04', display:'学育⑨',        grades:'4,5',     type:'test' },
+            { id:'pdf_0705', date:'2026-07-05', display:'学育⑨',        grades:'3',       type:'test' },
+            { id:'pdf_0711', date:'2026-07-11', display:'学育⑩',        grades:'4,5',     type:'test' },
+            { id:'pdf_0718', date:'2026-07-18', display:'チェック⑥',    grades:'3,4',     type:'test' },
+            { id:'pdf_0719', date:'2026-07-19', display:'入試実戦①',    grades:'6',       type:'test' },
+            { id:'pdf_0905', date:'2026-09-05', display:'学育①',        grades:'4,5',     type:'test' },
+            { id:'pdf_0906', date:'2026-09-06', display:'合実①',        grades:'6',       type:'test' },
+            { id:'pdf_0912', date:'2026-09-12', display:'学育②',        grades:'4,5',     type:'test' },
+            { id:'pdf_0913', date:'2026-09-13', display:'合育②',        grades:'6',       type:'test' },
+            { id:'pdf_0919', date:'2026-09-19', display:'学育①',        grades:'3,4,5',   type:'test' },
+            { id:'pdf_0920', date:'2026-09-20', display:'学育①',        grades:'3,4,5,6', type:'test' },
+            { id:'pdf_0927', date:'2026-09-27', display:'チェック⑦',    grades:'3,4,5,6', type:'test' },
+            { id:'pdf_1003', date:'2026-10-03', display:'学育②',        grades:'4,5',     type:'test' },
+            { id:'pdf_1004', date:'2026-10-04', display:'学育②',        grades:'3',       type:'test' },
+            { id:'pdf_1011', date:'2026-10-11', display:'合育⑤',        grades:'6',       type:'test' },
+            { id:'pdf_1017', date:'2026-10-17', display:'学育③',        grades:'4,5',     type:'test' },
+            { id:'pdf_1018', date:'2026-10-18', display:'学育③',        grades:'3,6',     type:'test' },
+            { id:'pdf_1025', date:'2026-10-25', display:'全国3-5',      grades:'3,4,5',   type:'test' },
+            { id:'pdf_1031', date:'2026-10-31', display:'学育④',        grades:'4,5',     type:'test' },
+            { id:'pdf_1101', date:'2026-11-01', display:'全国2年',      grades:'2',       type:'test' },
+            { id:'pdf_1108', date:'2026-11-08', display:'合育⑧',        grades:'6',       type:'test' },
+            { id:'pdf_1114', date:'2026-11-14', display:'学育⑤',        grades:'4,5',     type:'test' },
+            { id:'pdf_1115', date:'2026-11-15', display:'学育⑤',        grades:'3,6',     type:'test' },
+            { id:'pdf_1122', date:'2026-11-22', display:'チェック⑨',    grades:'3,4,5,6', type:'test' },
+            { id:'pdf_1128', date:'2026-11-28', display:'学育⑥',        grades:'4,5',     type:'test' },
+            { id:'pdf_1129', date:'2026-11-29', display:'全国2-5',      grades:'2,3,4,5', type:'test' },
+            { id:'pdf_1206', date:'2026-12-06', display:'合育⑪',        grades:'6',       type:'test' },
+            { id:'pdf_1212', date:'2026-12-12', display:'学育⑦',        grades:'4,5',     type:'test' },
+            { id:'pdf_1213', date:'2026-12-13', display:'入試実戦⑥',    grades:'6',       type:'test' },
+            { id:'pdf_1220', date:'2026-12-20', display:'チェック⑩',    grades:'3,4,5',   type:'test' },
+            { id:'pdf_0110', date:'2027-01-10', display:'全国テスト',    grades:'3,4,5',   type:'test' },
         ];
+
+        // 前受けエントリを生成
+        const preTests = initial2026.map(t => {
+            const gradesArr = t.grades.split(',').map(g => g.trim());
+            const hasGrade6 = gradesArr.includes('6');
+            const has3to5 = gradesArr.some(g => ['3','4','5'].includes(g));
+
+            // 6年生のみ → 金曜日(5)、それ以外 → 木曜日(4)
+            const targetWeekday = (hasGrade6 && !has3to5) ? 5 : 4;
+            const preDate = getDayBeforeTest(t.date, targetWeekday);
+
+            return {
+                id: t.id + '_pre',
+                date: preDate,
+                display: t.display,
+                grades: t.grades,
+                type: 'mae_uke'
+            };
+        });
 
         const existing = await getTestSchedule();
         const existingDates = new Set(existing.map(t => t.date));
-        const toAdd = initial2026.filter(t => !existingDates.has(t.date));
-        await saveTestSchedule([...existing, ...toAdd]);
+
+        // テスト＋前受けをフィルタ（重複排除）
+        const toAddTests = initial2026.filter(t => !existingDates.has(t.date));
+        const toAddPreTests = preTests.filter(t => !existingDates.has(t.date));
+
+        const allToAdd = [...toAddTests, ...toAddPreTests];
+        await saveTestSchedule([...existing, ...allToAdd]);
         await loadTestList();
-        alert(`登録完了：${toAdd.length}件を追加しました。\n⚠️ 日程はカリキュラム表から推定したものです。実際の日程と照らし合わせて修正してください。`);
+        alert(`登録完了：テスト${toAddTests.length}件、前受け${toAddPreTests.length}件を追加しました。`);
     };
 
     document.getElementById('cleanup-btn').onclick = async () => {
