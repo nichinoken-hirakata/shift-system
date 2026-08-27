@@ -167,10 +167,7 @@
                 const entry = testSchedule.find(e => e.date === dateStr);
                 if (!entry) return;
                 const typeShort = entry.type === 'mae_uke' ? '前受' : 'テスト';
-                const nums = (entry.grades || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)).sort((a, b) => a - b);
-                const gradesStr = nums.length === 0 ? '' : nums.length === 1 ? `${nums[0]}` : `${nums[0]}-${nums[nums.length - 1]}`;
-                const dispShort = entry.display.replace(/[①-⑳]/g, '').slice(0, 2);
-                const label = `${typeShort}:${gradesStr}${dispShort}`;
+                const label = `${typeShort}:${entry.display}`;
                 const color = entry.type === 'mae_uke' ? '#7c3aed' : '#8b5cf6';
                 const top = arg.el.querySelector('.fc-daygrid-day-top');
                 if (top) {
